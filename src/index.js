@@ -1,7 +1,21 @@
 
 import * as d3 from "d3";
 
-console.log('hi')
+const margin = {top: 20, right: 20, bottom: 30, left: 30}
+
+const config = {
+  r0     : 2.5,
+  r1     : 4,
+  rStep  : .001,
+  x0     : .001,
+  x1     : .999,
+  xStep  : .2,
+  nStart : 100,
+  nStop  : 200
+}
+
+const height = 600
+const width = 1000
 
 const xScale = d3.scaleLinear()
     .domain([config.r0, config.r1])
@@ -10,22 +24,6 @@ const xScale = d3.scaleLinear()
 const yScale = d3.scaleLinear()
     .domain([1, 0])
     .range([margin.top, height - margin.bottom])
-
-const margin = {top: 20, right: 20, bottom: 30, left: 30}
-
-const height = 600
-const width = 1000
-
-const config = {
-  r0     : 2.8,
-  r1     : 4,
-  rStep  : .0005,
-  x0     : .001,
-  x1     : .999,
-  xStep  : .4,
-  nStart : 100,
-  nStop  : 150
-}
 
 const LogisticMap = (r, x0) => {
   const L = (r, x) => r*x*(1 - x)
@@ -67,11 +65,9 @@ const L_grid = (c) => {
       let all_data = []
       for (let r of Object.keys(data)) {
         for (let x of Object.keys(data[r])) {
-          all_data.push({
-            r: r,
-            x: x,
-            data: data[r][x]
-          })
+          for (let v of data[r][x]) {
+            all_data.push([ r, v ])
+          }
         }
       }
       return all_data
@@ -80,20 +76,47 @@ const L_grid = (c) => {
 }
 
 
-const svg = `<svg viewBox="0 0 ${width} ${height}" style="max-width: ${width}px; font: 10px sans-serif;">
-  ${d3.select(svg`<g transform="translate(0,${height - margin.bottom})">`)
-    .call(d3.axisBottom(xScale))
-    .call(g => g.select(".domain").remove())
-    .node()}
-  ${d3.select(svg`<g transform="translate(${margin.left}, 0)">`)
-    .call(d3.axisLeft(yScale))
-    .call(g => g.select(".domain").remove())
-    .node()}
-  ${
-    grid.all().map(o => {
-      return o.data.map(d => d3.select(svg`<circle cx="${xScale(o.r)}" cy="${yScale(d)}" r=".15" style="fill: black;" />`).node() )
-    }).flat()
+// Start
+
+console.log("Generating data...")
+var grid = L_grid(config)
+var all_data = grid.all()
+
+const canvas = document.getElementById('canvas')
+
+/*
+var xAxis = d3.select('g')
+  .attr('transform', `translate(0,${height - margin.bottom})`)
+  .call(d3.axisBottom(xScale))
+
+var yAxis = d3.select('g')
+  .attr('transform', `translate(${margin.left}, 0)`) .call(d3.axisLeft(yScale))
+
+svg.append(xAxis)
+svg.append(yAxis)
+*/
+
+var ctx = canvas.getContext('2d')
+ctx.fillStyle = 'rgb(0, 0, 0)'
+
+d3.select(ctx.canvas).call(d3.zoom()
+    .scaleExtent([1, 8])
+    .on("zoom", ({transform}) => zoomed(transform)));
+
+function zoomed(transform) {
+  console.log("Rendering...")
+  ctx.save();
+  ctx.clearRect(0, 0, width, height);
+  ctx.translate(transform.x, transform.y);
+  ctx.scale(transform.k, transform.k);
+  for (const [r, v] of all_data) {
+    const x = xScale(parseFloat(r))
+    const y = yScale(parseFloat(v))
+    ctx.fillRect(x, y, .1, .1)
   }
-`
+  ctx.fill();
+  ctx.restore();
+  console.log("Done.")
+}
 
-
+zoomed(d3.zoomIdentity);
