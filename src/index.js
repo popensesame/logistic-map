@@ -1,18 +1,17 @@
 
 import * as d3 from "d3";
 
-const margin = {top: 20, right: 20, bottom: 30, left: 30}
+import { LGraph } from './log_map'
 
 const config = {
-  r0     : 2.5,
+  r0     : 2,
   r1     : 4,
   rStep  : .001,
-  x0     : .001,
-  x1     : .999,
-  xStep  : .2,
-  nStart : 100,
-  nStop  : 200
+  xSize  : 100,
+  frames : 200
 }
+
+const margin = {top: 20, right: 20, bottom: 30, left: 30}
 
 const height = 600
 const width = 1000
@@ -25,62 +24,7 @@ const yScale = d3.scaleLinear()
     .domain([1, 0])
     .range([margin.top, height - margin.bottom])
 
-const LogisticMap = (r, x0) => {
-  const L = (r, x) => r*x*(1 - x)
-  var n = 0
-  var Xn = x0
-  return {
-    next: () => {
-      Xn = L(r, Xn)
-      n += 1
-      return Xn
-    },
-    get_N: () => n,
-    get_Xn: () => Xn
-  }
-}
-
-const L_seq = (r, x0, n) => {
-  let data = []
-  const L = LogisticMap(r, x0)
-  while (L.get_N() != n) {
-    data.push(L.next())
-  }
-  return data
-}
-
-const L_grid = (c) => {
-  let r0=c.r0, r1=c.r1, x0=c.x0, x1=c.x1, rStep=c.rStep, xStep=c.xStep, nStart=c.nStart, nStop=c.nStop
-  let data = {}
-  for (let r=r0; r<r1; r += rStep) {
-    data[r] = {}
-    for (let x=x0; x<x1; x+= xStep) {
-      let seq = L_seq(r, x, nStop)
-      data[r][x] = seq.splice(nStart, nStop)
-    }
-  }
-  return {
-    grid: () => data,
-    all: () => {
-      let all_data = []
-      for (let r of Object.keys(data)) {
-        for (let x of Object.keys(data[r])) {
-          for (let v of data[r][x]) {
-            all_data.push([ r, v ])
-          }
-        }
-      }
-      return all_data
-    }
-  }
-}
-
-
 // Start
-
-console.log("Generating data...")
-var grid = L_grid(config)
-var all_data = grid.all()
 
 const canvas = document.getElementById('canvas')
 
@@ -99,24 +43,34 @@ svg.append(yAxis)
 var ctx = canvas.getContext('2d')
 ctx.fillStyle = 'rgb(0, 0, 0)'
 
-d3.select(ctx.canvas).call(d3.zoom()
-    .scaleExtent([1, 8])
-    .on("zoom", ({transform}) => zoomed(transform)));
+//d3.select(ctx.canvas).call(d3.zoom()
+//    .scaleExtent([1, 8])
+//    .on("zoom", ({transform}) => zoomed(transform)));
 
-function zoomed(transform) {
-  console.log("Rendering...")
+//r0, r1, rStep, sliceSampleSize
+const graph = new LGraph(config.r0, config.r1, config.rStep, config.xSize)
+
+function draw() {
   ctx.save();
   ctx.clearRect(0, 0, width, height);
-  ctx.translate(transform.x, transform.y);
-  ctx.scale(transform.k, transform.k);
-  for (const [r, v] of all_data) {
-    const x = xScale(parseFloat(r))
-    const y = yScale(parseFloat(v))
-    ctx.fillRect(x, y, .1, .1)
-  }
   ctx.fill();
   ctx.restore();
-  console.log("Done.")
+  for (let slice of graph.slices) {
+    const data = slice.get()
+    for (let v of data) {
+      const x = xScale(parseFloat(slice.r))
+      const y = yScale(parseFloat(v))
+      ctx.fillRect(x, y, .3, .3)
+    }
+  }
+  graph.next()
 }
 
-zoomed(d3.zoomIdentity);
+setInterval(draw, 10)
+
+function zoomed(transform) {
+  ctx.translate(transform.x, transform.y);
+  ctx.scale(transform.k, transform.k);
+}
+
+//zoomed(d3.zoomIdentity);
