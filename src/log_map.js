@@ -28,7 +28,10 @@ function LGraph (r0, r1, rStep, sliceSampleSize) {
   for (let r=r0; r<r1; r+=rStep) {
     this.slices.push(new LSlice(r, sliceSampleSize))
   }
-  this.next = () => { this.slices.forEach(slice => slice.next()) }
+  this._next = () => { this.slices.forEach(slice => slice.next()) }
+  this.next = (iterations) => {
+    for (let i of Array(iterations || 1)) { this._next() }
+  }
   this.n = () => this.steps[0].n()
 }
 

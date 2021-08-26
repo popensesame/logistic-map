@@ -2,23 +2,19 @@
 import * as d3 from "d3";
 
 import { LGraph } from './log_map'
+import { config } from './config'
 
-const config = {
-  r0     : 2,
-  r1     : 4,
-  rStep  : .001,
-  xSize  : 100,
-  frames : 200
-}
+const POINT_SIZE = .5
+const STEPS_PER_FRAME = 5
 
 const margin = {top: 20, right: 20, bottom: 30, left: 30}
 
-const height = 600
-const width = 1000
+const height = 1000
+const width = 2000
 
 const xScale = d3.scaleLinear()
     .domain([config.r0, config.r1])
-    .range([margin.left, width - margin.right])
+    .range([0, width])
 
 const yScale = d3.scaleLinear()
     .domain([1, 0])
@@ -50,7 +46,11 @@ ctx.fillStyle = 'rgb(0, 0, 0)'
 //r0, r1, rStep, sliceSampleSize
 const graph = new LGraph(config.r0, config.r1, config.rStep, config.xSize)
 
+var frame = 0
+
 function draw() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
   ctx.save();
   ctx.clearRect(0, 0, width, height);
   ctx.fill();
@@ -60,13 +60,14 @@ function draw() {
     for (let v of data) {
       const x = xScale(parseFloat(slice.r))
       const y = yScale(parseFloat(v))
-      ctx.fillRect(x, y, .3, .3)
+      ctx.fillRect(x, y, POINT_SIZE, POINT_SIZE)
     }
   }
   graph.next()
+  window.requestAnimationFrame(draw)
 }
 
-setInterval(draw, 10)
+window.requestAnimationFrame(draw);
 
 function zoomed(transform) {
   ctx.translate(transform.x, transform.y);
