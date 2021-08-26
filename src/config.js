@@ -1,6 +1,6 @@
 export const config = {
-  r0     : 1,
-  r1     : 7,
+  r0     : 0.5,
+  r1     : 5,
   rStep  : .0005,
   xSize  : 50,
 }
