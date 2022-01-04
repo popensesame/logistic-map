@@ -1,7 +1,7 @@
 
 import * as d3 from "d3";
 
-import { LGraph } from './log_map'
+import { LGraph, LSeq } from './log_map'
 import { config } from './config'
 
 const POINT_SIZE = .5
@@ -46,7 +46,8 @@ ctx.fillStyle = 'rgb(0, 0, 0)'
 //r0, r1, rStep, sliceSampleSize
 const graph = new LGraph(config.r0, config.r1, config.rStep, config.xSize)
 
-var frame = 0
+const seqR = 4.0
+const seq = new LSeq(seqR, Math.random())
 
 function draw() {
   canvas.width = window.innerWidth;

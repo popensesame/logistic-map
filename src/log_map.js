@@ -47,4 +47,4 @@ function LSeq (r, x0) {
   return this
 }
 
-export { LGraph }
+export { LGraph, LSlice, LSeq, LMap }
