@@ -29,9 +29,15 @@ canvas.height = config.height
 var ctx = canvas.getContext('2d')
 ctx.fillStyle = 'rgb(0, 0, 0)'
 
-const graph = new LGraph(config.r0, config.r1, config.rStep, config.xSize)
+let graph
 
-let requestId
+function newGraph() {
+	return new LGraph(config.r0, config.r1, config.rStep, config.xSize)
+}
+
+function clear(ctx) {
+	ctx.clearRect(0, 0, width, height);
+}
 
 function draw() {
   ctx.save();
@@ -60,6 +66,7 @@ let animating = true
 document.getElementById('start')
 	.addEventListener('click', e => {
 		animating = true
+		graph = graph || newGraph()
 		console.log('Starting...')
 		window.requestAnimationFrame(draw);
 	})
@@ -74,4 +81,10 @@ document.getElementById('next')
 		window.requestAnimationFrame(draw);
 	})
 
-window.requestAnimationFrame(draw);
+document.getElementById('clear')
+	.addEventListener('click', e => {
+		animating = false
+		graph = newGraph()
+		clear(ctx)
+	})
+
