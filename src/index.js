@@ -1,7 +1,7 @@
 
 import * as d3 from "d3";
 
-import { LGraph, LSeq } from './log_map'
+import { LGraph } from './log_map'
 import { config } from './config'
 
 const POINT_SIZE = .5
@@ -9,8 +9,8 @@ const STEPS_PER_FRAME = 5
 
 const margin = {top: 20, right: 20, bottom: 30, left: 30}
 
-const height = 1000
-const width = 2000
+const height = config.height
+const width = config.width
 
 const xScale = d3.scaleLinear()
     .domain([config.r0, config.r1])
@@ -23,35 +23,17 @@ const yScale = d3.scaleLinear()
 // Start
 
 const canvas = document.getElementById('canvas')
-
-/*
-var xAxis = d3.select('g')
-  .attr('transform', `translate(0,${height - margin.bottom})`)
-  .call(d3.axisBottom(xScale))
-
-var yAxis = d3.select('g')
-  .attr('transform', `translate(${margin.left}, 0)`) .call(d3.axisLeft(yScale))
-
-svg.append(xAxis)
-svg.append(yAxis)
-*/
+canvas.width = config.width
+canvas.height = config.height
 
 var ctx = canvas.getContext('2d')
 ctx.fillStyle = 'rgb(0, 0, 0)'
 
-//d3.select(ctx.canvas).call(d3.zoom()
-//    .scaleExtent([1, 8])
-//    .on("zoom", ({transform}) => zoomed(transform)));
-
-//r0, r1, rStep, sliceSampleSize
 const graph = new LGraph(config.r0, config.r1, config.rStep, config.xSize)
 
-const seqR = 4.0
-const seq = new LSeq(seqR, Math.random())
+let requestId
 
 function draw() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
   ctx.save();
   ctx.clearRect(0, 0, width, height);
   ctx.fill();
@@ -65,14 +47,31 @@ function draw() {
     }
   }
   graph.next()
-  window.requestAnimationFrame(draw)
+	if (animating) {
+		window.requestAnimationFrame(draw)
+	} else {
+		console.log('Stopping...')
+	}
+  
 }
+
+let animating = true
+
+document.getElementById('start')
+	.addEventListener('click', e => {
+		animating = true
+		console.log('Starting...')
+		window.requestAnimationFrame(draw);
+	})
+
+document.getElementById('stop')
+	.addEventListener('click', e => {
+		animating = false
+	})
+
+document.getElementById('next')
+	.addEventListener('click', e => {
+		window.requestAnimationFrame(draw);
+	})
 
 window.requestAnimationFrame(draw);
-
-function zoomed(transform) {
-  ctx.translate(transform.x, transform.y);
-  ctx.scale(transform.k, transform.k);
-}
-
-//zoomed(d3.zoomIdentity);
