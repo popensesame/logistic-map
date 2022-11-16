@@ -1,10 +1,44 @@
 <head>
+<style>
+
+	body {
+		font-family: sans-serif;
+	}
+
+	#canvas {
+		border: 1px solid black;
+		border-radius: 5px;
+	}
+
+	.control {
+		border: .5px solid black;
+		border-radius: 5px;
+		padding: 5px;
+	}
+
+</style>
 </head>
 <body>
-	<button id="start">Start</button>
-	<button id="stop">Stop</button>
-	<button id="next">Next</button>
-	<button id="clear">Clear</button>
-  <canvas id="canvas"></canvas>
+	<div>
+		<h3>Logistic Map</h3>
+	</div>
+	<div class="control">
+		<button id="start">Start</button>
+		<button id="stop">Stop</button>
+		<button id="next">Next</button>
+		<button id="clear">Clear</button>
+		<button id="save">Save Frame</button>
+	</div>
+	<div class="control">
+		<label>r0: <input id="r0"></input></label>
+		<label>r1: <input id="r1"></input></label>
+		<label>rΔ: <input id="rStep"></input></label>
+		<label>N: <input id="xSize"></input></label>
+		<label>width: <input id="width"></input></label>
+		<label>height: <input id="height"></input></label>
+	</div>
+	<div class="canvas-container">
+		<canvas id="canvas"></canvas>
+	</div>
   <script src="./main.bundle.js"></script>
 </body>
