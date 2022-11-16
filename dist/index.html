@@ -1,6 +1,10 @@
 <head>
 <style>
 
+	.hidden {
+		display: none;
+	}
+
 	body {
 		font-family: sans-serif;
 	}
@@ -23,11 +27,13 @@
 		<h3>Logistic Map</h3>
 	</div>
 	<div class="control">
+		<button id="play">Play</button>
 		<button id="start">Start</button>
 		<button id="stop">Stop</button>
 		<button id="next">Next</button>
 		<button id="clear">Clear</button>
 		<button id="save">Save Frame</button>
+		<a id="link" class="hidden">Download</a>
 	</div>
 	<div class="control">
 		<label>r0: <input id="r0"></input></label>

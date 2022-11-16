@@ -29,7 +29,9 @@ class LogMapCanvas {
 		this.canvas.width = conf.width
 		this.canvas.height = conf.height
 		this.ctx = this.canvas.getContext('2d')
-		this.ctx.fillStyle = 'rgb(0, 0, 0)'
+		this.fillStyleWhite = 'rgb(255, 255, 255, 100)'
+		this.fillStylePurple = 'rgb(94, 92, 202, 100)'
+		this.fillStyleBlack = 'rgb(0, 0, 0)'
 		this.graph = this.newGraph(conf.r0, conf.r1, conf.rStep, conf.xSize)
 		this.initControls(conf)
 	}
@@ -62,10 +64,13 @@ class LogMapCanvas {
 	}
 
 	draw() {
-		this.ctx.save();
-		this.ctx.clearRect(0, 0, width, height);
-		this.ctx.fill();
-		this.ctx.restore();
+		//this.ctx.save();
+		this.ctx.fillStyle = this.fillStyleWhite
+		this.ctx.clearRect(0, 0, this.width, this.height);
+		this.ctx.rect(0, 0, this.width, this.height);
+		this.ctx.fill()
+		this.ctx.fillStyle = this.fillStyleBlack
+		//this.ctx.restore();
 		for (let slice of this.graph.slices) {
 			const data = slice.get()
 			for (let v of data) {
@@ -84,6 +89,7 @@ class LogMapCanvas {
 
 	initControls(conf) {
 		this.ctl = {
+			play: document.getElementById('play'),
 			start: document.getElementById('start'),
 			stop: document.getElementById('stop'),
 			next: document.getElementById('next'),
@@ -107,6 +113,12 @@ class LogMapCanvas {
 		})
 
 		this.ctl.start.addEventListener('click', e => {
+			this.graph = this.graph || this.newGraph()
+			console.log('Starting...')
+			window.requestAnimationFrame(this.draw.bind(this));
+		})
+
+		this.ctl.play.addEventListener('click', e => {
 			this.animating = true
 			this.graph = this.graph || this.newGraph()
 			console.log('Starting...')
@@ -118,7 +130,7 @@ class LogMapCanvas {
 		})
 
 		this.ctl.next.addEventListener('click', e => {
-			window.requestAnimationFrame(this.draw);
+			window.requestAnimationFrame(this.draw.bind(this));
 		})
 
 		this.ctl.clear.addEventListener('click', e => {
@@ -127,8 +139,12 @@ class LogMapCanvas {
 
 		this.ctl.save.addEventListener('click', e => {
 			this.animating = false
-			const url = canvas.toDataURL('image/jpeg')
-			window.open(url)
+			const url = this.canvas.toDataURL('image/jpeg', 1.0)
+			const link = document.getElementById('link')
+			link.href = url //URL.createObjectURL(canvas.toBlob())
+			link.download = 'image.jpg'
+			link.classList.remove('hidden')
+			link.dispatchEvent(new Event('click'))
 		})
 	}
 }
