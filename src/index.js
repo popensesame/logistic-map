@@ -33,7 +33,24 @@ class LogMapCanvas {
 		this.fillStylePurple = 'rgb(94, 92, 202, 100)'
 		this.fillStyleBlack = 'rgb(0, 0, 0)'
 		this.graph = this.newGraph(conf.r0, conf.r1, conf.rStep, conf.xSize)
-		this.initControls(conf)
+		this.initControls()
+		this.renderPointLocations()
+		this.currentFrame = 0
+	}
+
+	renderPointLocations() {
+		console.log('Computing point locations...')
+		this.frames = []
+		for (let i=0; i<this.computeRate; i++) {
+			this.graph.next()
+			this.frames.push(this.graph.slices.map(slice => {
+				return {
+					x: xScale(slice.r),
+					Y: slice.get().map(v => yScale(v))
+				}
+			}))
+		}
+		console.log('Done.')
 	}
 
 	newGraph(conf) {
@@ -56,30 +73,80 @@ class LogMapCanvas {
 		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 	}
 
-	resetCanvas(conf) {
-		this.clear()
+	resetCanvas(conf={}) {
 		this.canvas.width = conf.width || this.canvas.width
 		this.canvas.height = conf.height || this.canvas.height
-		this.graph = newGraph()
+		this.clear()
+		this.graph = this.newGraph()
+	}
+
+	drawPoint (x, y) {
+		this.ctx.fillRect(x, y, POINT_SIZE, POINT_SIZE)
+	}
+
+	async loop () {
+		this.graph.next()
+		this.points = this.graph.slices.map(slice => {
+			return {
+				x: xScale(slice.r),
+				Y: slice.get().map(data => data.map(v => yScale(v)))
+			}
+		})
+		this.ctx.fillStyle = this.fillStyleWhite
+		this.ctx.clearRect(0, 0, this.width, this.height)
+		this.ctx.fill()
+		for (let i=0; i<this.slices.length; i++) {
+			//	const xNext = xScale(parseFloat(slice.r+this.rStep))
+			this.ctx.rect(x, 0, POINT_SIZE, this.height);
+			//this.ctx.clearRect(xNext, 0, POINT_SIZE*this.rStep*this.sliceRenderRate, this.height);
+			this.ctx.fillStyle = this.fillStyleBlack
+			this.points.forEach(slice => {
+				slice.Y.map(y => this.drawPoint(slice.x, y))
+				requestAnimationFrame()
+			})
+		}
+		if (this.animating) {
+			await this.loop()
+		}
 	}
 
 	draw() {
-		//this.ctx.save();
+		/* Render all slices at once */
 		this.ctx.fillStyle = this.fillStyleWhite
 		this.ctx.clearRect(0, 0, this.width, this.height);
 		this.ctx.rect(0, 0, this.width, this.height);
 		this.ctx.fill()
 		this.ctx.fillStyle = this.fillStyleBlack
 		//this.ctx.restore();
-		for (let slice of this.graph.slices) {
-			const data = slice.get()
-			for (let v of data) {
-				const x = xScale(parseFloat(slice.r))
-				const y = yScale(parseFloat(v))
-				this.ctx.fillRect(x, y, POINT_SIZE, POINT_SIZE)
+		for (let frameSlice of this.frames[this.currentFrame]) {
+			for (let y of frameSlice.Y) {
+				this.ctx.fillRect(frameSlice.x, y, POINT_SIZE, POINT_SIZE)
 			}
 		}
-		this.graph.next()
+
+		//this.graph.next()
+
+		// Render one slice at a time
+		/*
+		this.ctx.fillStyle = this.fillStyleWhite
+		this.graph.nextSlice()
+		const slice = this.graph.slices[this.graph.sliceIndex]
+		const data = slice.get()
+		const x = xScale(parseFloat(slice.r))
+		const xNext = xScale(parseFloat(slice.r+this.rStep))
+		this.ctx.rect(x, 0, POINT_SIZE, this.height);
+		this.ctx.clearRect(xNext, 0, POINT_SIZE, this.height);
+		this.ctx.fillStyle = this.fillStyleBlack
+		const Y = data.map(v => yScale(v))
+		//await Promise.all(Y.map(y => this.drawPoint(x, y)))
+		*/
+
+		this.currentFrame++
+		if (this.currentFrame === this.computeRate) {
+			this.animating = false
+			console.log(`Finished rendering ${this.computeRate} frames.`)
+		}
+
 		if (this.animating) {
 			window.requestAnimationFrame(this.draw.bind(this))
 		} else {
@@ -87,7 +154,7 @@ class LogMapCanvas {
 		}
 	}
 
-	initControls(conf) {
+	initControls() {
 		this.ctl = {
 			play: document.getElementById('play'),
 			start: document.getElementById('start'),
@@ -96,6 +163,7 @@ class LogMapCanvas {
 			clear: document.getElementById('clear'),
 			save: document.getElementById('save'),
 
+			computeRate: document.getElementById('computeRate'),
 			r0: document.getElementById('r0'),
 			r1: document.getElementById('r1'),
 			rStep: document.getElementById('rStep'),
@@ -104,11 +172,13 @@ class LogMapCanvas {
 			height: document.getElementById('height')
 		}
 
-		const keys = [ 'r0', 'r1', 'rStep', 'xSize', 'width', 'height' ]
+		const keys = [ 'r0', 'r1', 'rStep', 'xSize', 'width', 'height', 'computeRate' ]
 		keys.forEach(k => {
-			this.ctl[k].value = conf[k]
+			this.ctl[k].value = this[k]
 			this.ctl[k].addEventListener('change', e => {
 				this[k] = parseInt(e.target.value)
+				this.resetGraph()
+				this.resetCanvas()
 			})
 		})
 

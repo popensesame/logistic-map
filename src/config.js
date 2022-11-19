@@ -3,6 +3,8 @@ export const config = {
   r1     : 5,
   rStep  : .001,
   xSize  : 200,
+	sliceRenderRate: 20,
+	computeRate: 20,
   width: 1200,
   height: 800
 }

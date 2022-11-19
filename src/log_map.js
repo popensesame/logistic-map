@@ -28,11 +28,20 @@ function LGraph (r0, r1, rStep, sliceSampleSize) {
   for (let r=r0; r<r1; r+=rStep) {
     this.slices.push(new LSlice(r, sliceSampleSize))
   }
-  this._next = () => { this.slices.forEach(slice => slice.next()) }
+	this.sliceIndex = 0
+	this.nextSlice = () => {
+		if (this.sliceIndex === this.slices.length-1) this.sliceIndex = 0
+		this.slices[this.sliceIndex].next()
+		this.sliceIndex++
+	}
+  this._next = () => {
+		this.slices.forEach(slice => slice.next())
+		this.sliceIndex = 0
+	}
   this.next = (iterations) => {
     for (let i of Array(iterations || 1)) { this._next() }
   }
-  this.n = () => this.steps[0].n()
+  this.n = () => this.slices[0].n()
 }
 
 function LSeq (r, x0) {
