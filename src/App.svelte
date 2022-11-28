@@ -176,10 +176,6 @@
 		requestAnimationFrame(draw)
 	}
 
-	$: if (zoomingIn) zoomingOut = false; boxZooming = false;
-	$: if (zoomingOut) zoomingIn = false; boxZooming = false;
-	$: if (boxZooming) zoomingIn = false; zoomingOut = false;
-
 	onMount(() => {
 		ctx = canvas.getContext('2d')
 		resetGraph()
