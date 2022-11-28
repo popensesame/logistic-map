@@ -1,59 +1,60 @@
 
-function LMap (r, x0) {
-  this.Xn = x0
-  this.n = 0
-  this.next = () => {
-    this.n += 1
-    return this.Xn = r * this.Xn * (1-this.Xn)
-  }
-  return this
-}
-
-function LSlice (r, size) {
-  this.r = r
-  this.maps = []
-  for (let i=0; i<size; i++) {
-    const rand = Math.random()
-    this.maps.push(new LMap(r, rand))
-  }
-  this.next = () => { this.maps.forEach(lmap => lmap.next()) }
-  this.get = () => this.maps.map(lmap => lmap.Xn)
-  this.n = () => this.maps[0].n
-  this.size = size
-  return this
-}
-
-function LGraph (r0, r1, rStep, sliceSampleSize) {
-  this.slices = []
-  for (let r=r0; r<r1; r+=rStep) {
-    this.slices.push(new LSlice(r, sliceSampleSize))
-  }
-	this.sliceIndex = 0
-	this.nextSlice = () => {
-		if (this.sliceIndex === this.slices.length-1) this.sliceIndex = 0
-		this.slices[this.sliceIndex].next()
-		this.sliceIndex++
+class LogisticMap {
+	constructor(r) {
+		this.r = r
+		this.X = []
+		this.X.push(Math.random())
 	}
-  this._next = () => {
-		this.slices.forEach(slice => slice.next())
-		this.sliceIndex = 0
+	render(scale) {
+		return this.X.map(x => scale(x))
 	}
-  this.next = (iterations) => {
-    for (let i of Array(iterations || 1)) { this._next() }
-  }
-  this.n = () => this.slices[0].n()
+	renderFrame(index, scale) {
+		return scale(this.X[index])
+	}
+	f(r, x) { return r*x*(1-x) }
+	get n() { return this.X.length - 1 }
+	next() { this.X.push(this.f(this.r, this.X[this.n])) }
 }
 
-function LSeq (r, x0) {
-  this.LMap = new LMap(r, x0)
-  this.data = new Float32Array()
-  this.next = () => {
-    const Xn = this.LMap.next()
-    this.data.push(Xn)
-    return Xn
-  }
-  this.n = () => L.n
-  return this
+export class LGraph {
+	constructor(conf) {
+		const { r0, r1, rStep, sampleSize } = conf
+		this.slices = {}
+		for (let r=0; r<r1; r+=rStep) {
+			this.slices[r] = [...Array(sampleSize)].map(d => {
+				return new LogisticMap(r)
+			})
+		}
+		this.R = Object.keys(this.slices)
+		this.R.sort()
+	}
+	renderFrame(index, rScale, xScale) {
+		return {
+			R: this.R.map(r => rScale(r)),
+			slices: this.R.map(r => {
+				return this.slices[r]
+					.map(lmap => lmap.renderFrame(index, xScale))
+			})
+		}
+	}
+	render(rScale, xScale) {
+		return {
+			R: this.R.map(r => {
+				return rScale(r)
+			}),
+			slices: this.R.map(r => {
+				return this.slices[r].map(lmap => {
+					return lmap.render(xScale)
+				})
+			})
+		}
+	}
+	compute(num) { for (let i=0; i<num; i++) { this.next() } }
+	get n () { return this.slices[0][0].n }
+	next() {
+		this.R.forEach(r => {
+			this.slices[r].forEach(map => { map.next () })
+		})
+	}
 }
 
-export { LGraph, LSlice, LSeq, LMap }

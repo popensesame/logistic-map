@@ -1,37 +1,48 @@
 
-import * as d3 from "d3";
+import { scaleLinear } from "d3"
 
 import { LGraph } from './log_map'
 import { config } from './config'
 
 const POINT_SIZE = .5
-const STEPS_PER_FRAME = 5
 
 const margin = {top: 20, right: 20, bottom: 30, left: 30}
 
 const height = config.height
 const width = config.width
 
-const xScale = d3.scaleLinear()
-    .domain([config.r0, config.r1])
-    .range([0, width])
-
-const yScale = d3.scaleLinear()
-    .domain([1, 0])
-    .range([margin.top, height - margin.bottom])
-
 // Start
 
 class LogMapCanvas {
 	constructor(conf) {
 		Object.assign(this, conf)
+
+		this.boxZoomMode = false
+		this.boxZoomBox = {
+			xtart: 0,
+			ystart: 0,
+			xend: 0,
+			yend: 0
+		}
+
+		// Scales for drawing points
+		this.xScale = scaleLinear()
+				.domain([config.r0, config.r1])
+				.range([0, width])
+		this.yScale = scaleLinear()
+				.domain([this.yend, this.ystart])
+				.range([0, height])
+
+		// Initialize canvas
 		this.canvas = document.getElementById(conf.id || 'canvas')
 		this.canvas.width = conf.width
 		this.canvas.height = conf.height
 		this.ctx = this.canvas.getContext('2d')
 		this.fillStyleWhite = 'rgb(255, 255, 255, 100)'
-		this.fillStylePurple = 'rgb(94, 92, 202, 100)'
 		this.fillStyleBlack = 'rgb(0, 0, 0)'
+		this.fillStylePurple = 'rgb(94, 92, 202, 100)'
+
+		// Initialize the graph data
 		this.graph = this.newGraph(conf.r0, conf.r1, conf.rStep, conf.xSize)
 		this.initControls()
 		this.renderPointLocations()
@@ -45,8 +56,8 @@ class LogMapCanvas {
 			this.graph.next()
 			this.frames.push(this.graph.slices.map(slice => {
 				return {
-					x: xScale(slice.r),
-					Y: slice.get().map(v => yScale(v))
+					x: this.xScale(slice.r),
+					Y: slice.get().map(v => this.yScale(v))
 				}
 			}))
 		}
@@ -84,69 +95,22 @@ class LogMapCanvas {
 		this.ctx.fillRect(x, y, POINT_SIZE, POINT_SIZE)
 	}
 
-	async loop () {
-		this.graph.next()
-		this.points = this.graph.slices.map(slice => {
-			return {
-				x: xScale(slice.r),
-				Y: slice.get().map(data => data.map(v => yScale(v)))
-			}
-		})
-		this.ctx.fillStyle = this.fillStyleWhite
-		this.ctx.clearRect(0, 0, this.width, this.height)
-		this.ctx.fill()
-		for (let i=0; i<this.slices.length; i++) {
-			//	const xNext = xScale(parseFloat(slice.r+this.rStep))
-			this.ctx.rect(x, 0, POINT_SIZE, this.height);
-			//this.ctx.clearRect(xNext, 0, POINT_SIZE*this.rStep*this.sliceRenderRate, this.height);
-			this.ctx.fillStyle = this.fillStyleBlack
-			this.points.forEach(slice => {
-				slice.Y.map(y => this.drawPoint(slice.x, y))
-				requestAnimationFrame()
-			})
-		}
-		if (this.animating) {
-			await this.loop()
-		}
-	}
-
 	draw() {
-		/* Render all slices at once */
 		this.ctx.fillStyle = this.fillStyleWhite
 		this.ctx.clearRect(0, 0, this.width, this.height);
 		this.ctx.rect(0, 0, this.width, this.height);
 		this.ctx.fill()
 		this.ctx.fillStyle = this.fillStyleBlack
-		//this.ctx.restore();
 		for (let frameSlice of this.frames[this.currentFrame]) {
 			for (let y of frameSlice.Y) {
 				this.ctx.fillRect(frameSlice.x, y, POINT_SIZE, POINT_SIZE)
 			}
 		}
-
-		//this.graph.next()
-
-		// Render one slice at a time
-		/*
-		this.ctx.fillStyle = this.fillStyleWhite
-		this.graph.nextSlice()
-		const slice = this.graph.slices[this.graph.sliceIndex]
-		const data = slice.get()
-		const x = xScale(parseFloat(slice.r))
-		const xNext = xScale(parseFloat(slice.r+this.rStep))
-		this.ctx.rect(x, 0, POINT_SIZE, this.height);
-		this.ctx.clearRect(xNext, 0, POINT_SIZE, this.height);
-		this.ctx.fillStyle = this.fillStyleBlack
-		const Y = data.map(v => yScale(v))
-		//await Promise.all(Y.map(y => this.drawPoint(x, y)))
-		*/
-
 		this.currentFrame++
 		if (this.currentFrame === this.computeRate) {
 			this.animating = false
 			console.log(`Finished rendering ${this.computeRate} frames.`)
 		}
-
 		if (this.animating) {
 			window.requestAnimationFrame(this.draw.bind(this))
 		} else {
@@ -154,7 +118,71 @@ class LogMapCanvas {
 		}
 	}
 
+	drawBoxZoomBox() {
+		const box = this.boxZoomBox
+		const top = Math.min(box.ystart, box.yend)
+		const left = Math.min(box.xstart, box.xend)
+		const width = Math.abs(box.xstart - box.xend)
+		const height = Math.abs(box.ystart - box.yend)
+
+		const rect = this.ctl.boxZoomRect
+		rect.style.top = top
+		rect.style.left = left
+		rect.style.width = width
+		rect.style.height = height
+	}
+
+	mouseMoveListener(e) {
+		if (!this.drawingBoxZoom) return
+		console.log('boxzoom:mousemove')
+		this.boxZoomBox.xend = e.clientX
+		this.boxZoomBox.yend = e.clientY
+		this.drawBoxZoomBox()
+	}
+
+	mouseDownListener(e) {
+		if (!this.boxZoomMode) return
+		console.log('boxzoom:mousedown')
+		this.drawingBoxZoom = true
+		this.boxZoomBox.xstart = e.clientX
+		this.boxZoomBox.ystart = e.clientY
+		this.ctl.boxZoomRect.classList.remove('hidden')
+		this.canvas.addEventListener('mousemove', this.mouseMoveListener.bind(this))
+	}
+
+	mouseUpListener(e) {
+		if (this.drawingBoxZoom) {
+			console.log('boxzoom:mouseup')
+			this.drawingBoxZoom = false
+			this.ctl.boxZoomRect.classList.add('hidden')
+			this.zoom()
+		}
+	}
+
+	zoom() {
+		const box = this.boxZoomBox
+		const canRect = this.canvas.getBoundingClientRect()
+		// Box rectangle in canvas coordinates
+		const xstart = box.xstart - canRect.left
+		const ystart = box.ystart - canRect.top
+		const width = box.xend - box.xstart
+		const height = box.yend - box.ystart
+		const xend = xstart + width
+		const yend = ystart + yend
+		this.r0 = this.xScale.invert(xstart)
+		this.r1 = this.xScale.invert(xend)
+		this.ystart = this.yScale.invert(ystart)
+		this.yend = this.yScale.invert(yend)
+		this.xScale.domain([ this.r0, this.r1 ])
+		this.yScale.domain([ this.yend, this.ystart ])
+		this.resetGraph()
+		this.renderPointLocations()
+	}
+
 	initControls() {
+		this.canvas.addEventListener('mousedown', e => this.mouseDownListener(e))
+		this.canvas.addEventListener('mouseup', e => this.mouseUpListener(e))
+
 		this.ctl = {
 			play: document.getElementById('play'),
 			start: document.getElementById('start'),
@@ -163,7 +191,11 @@ class LogMapCanvas {
 			clear: document.getElementById('clear'),
 			save: document.getElementById('save'),
 
+			boxZoomMode: document.getElementById('boxZoomMode'),
+			boxZoomRect: document.getElementById('boxZoomRect'),
+
 			computeRate: document.getElementById('computeRate'),
+
 			r0: document.getElementById('r0'),
 			r1: document.getElementById('r1'),
 			rStep: document.getElementById('rStep'),
@@ -171,6 +203,7 @@ class LogMapCanvas {
 			width: document.getElementById('width'),
 			height: document.getElementById('height')
 		}
+
 
 		const keys = [ 'r0', 'r1', 'rStep', 'xSize', 'width', 'height', 'computeRate' ]
 		keys.forEach(k => {
@@ -180,6 +213,20 @@ class LogMapCanvas {
 				this.resetGraph()
 				this.resetCanvas()
 			})
+		})
+
+		this.ctl.boxZoomMode.addEventListener('click', e => {
+			this.boxZoomMode = !this.boxZoomMode
+			this.ctl.boxZoomMode.classList.toggle('selected')
+			if (this.boxZoomMode) {
+				this.animating = false
+				this.canvas.style.cursor = 'crosshair'
+			} else {
+				this.drawingBoxZoom = false
+				this.canvas.style.cursor = 'auto'
+				this.ctl.boxZoomRect.classList.add('hidden')
+				console.log('tickedy-to')
+			}
 		})
 
 		this.ctl.start.addEventListener('click', e => {
